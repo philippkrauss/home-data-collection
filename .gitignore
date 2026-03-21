@@ -3,3 +3,7 @@
 __pycache__/
 *.pyc
 influx_backups/
+devices.json
+snapshot.json
+tinytuya.json
+tuya-raw.json
