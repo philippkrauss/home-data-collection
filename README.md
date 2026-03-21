@@ -22,7 +22,8 @@ Raspberry Pi zur Auslesung des Landis+Gyr UH50 Wärmemengenzählers, Erfassung v
 
 | Bucket | Inhalt | Retention |
 |---|---|---|
-| `waerme` | UH50-Messwerte, Wetterdaten | Forever |
+| `waerme` | UH50-Messwerte, Wetterdaten (stündlich) | Forever |
+| `wetter-details` | Wetterdaten (alle 5 Minuten) | — |
 | `fritzbox` | Fritz!Box Internet- und WLAN-Daten | — |
 | `system` | System-Metriken via Telegraf | — |
 
@@ -54,7 +55,10 @@ Authentifizierung über Benutzer `fritz2060` mit Fritz!Box-Kennwort.
 | `wifi` | channel, active_hosts (Tags: ssid, standard) |
 
 ### `/home/admin/weather_collector.py`
-Holt aktuelle Wetterdaten von Open-Meteo (kostenlos, kein API-Key) für Dettenhausen (48.6075, 9.1006) und schreibt in InfluxDB (Measurement: `weather`, Bucket: `waerme`).
+Holt aktuelle Wetterdaten von Open-Meteo (kostenlos, kein API-Key) für Dettenhausen (48.6075, 9.1006) und schreibt in InfluxDB (Measurement: `weather`).
+
+- Standardmodus (`--`): Bucket `waerme`, stündlich
+- Detailmodus (`--detailed`): Bucket `wetter-details`, alle 5 Minuten
 
 | Feld | Einheit | Beschreibung |
 |---|---|---|
@@ -77,6 +81,7 @@ Holt aktuelle Wetterdaten von Open-Meteo (kostenlos, kein API-Key) für Dettenha
 
 ### `/home/admin/backup_influx.sh`
 Erstellt ein natives InfluxDB-Backup aller Buckets, packt es als `.tar.gz` und lädt es auf das NAS (fritz.nas) hoch. Lokale Backups älter als 4 Wochen werden automatisch gelöscht.
+Konfiguration (`INFLUX_TOKEN`, `FTP_HOST`, `FTP_DIR`) wird aus `/home/admin/.env` geladen.
 FTP-Zugangsdaten liegen in `/home/admin/.ftp_credentials` (chmod 600).
 
 ---
@@ -98,14 +103,20 @@ INFLUX_TOKEN = ...
 INFLUX_ORG   = home
 
 # Buckets
-INFLUX_BUCKET_FRITZBOX = fritzbox
-INFLUX_BUCKET_WAERME   = waerme
-INFLUX_BUCKET_WEATHER  = waerme
+INFLUX_BUCKET_FRITZBOX          = fritzbox
+INFLUX_BUCKET_WAERME            = waerme
+INFLUX_BUCKET_WEATHER           = waerme
+INFLUX_BUCKET_WEATHER_DETAILED  = wetter-details
 
 # Wetter
 WEATHER_LAT      = 48.6075
 WEATHER_LON      = 9.1006
 WEATHER_LOCATION = Dettenhausen
+
+# FTP / NAS (für backup_influx.sh)
+FTP_HOST = fritz.nas
+FTP_USER = phkr
+FTP_DIR  = /backups/waerme-pi
 ```
 
 ### `/etc/telegraf/telegraf.conf`
@@ -127,7 +138,8 @@ Erfasst: CPU-Auslastung, CPU-Temperatur (`/sys/class/thermal/thermal_zone0/temp`
 | `/home/admin/influx_backups/` | Lokale Backup-Ablage |
 | `/home/admin/uh50.log` | Log UH50 |
 | `/home/admin/fritzbox_collector.log` | Log Fritz!Box |
-| `/home/admin/weather_collector.log` | Log Wetter |
+| `/home/admin/weather_collector.log` | Log Wetter (stündlich) |
+| `/home/admin/weather_collector_detailed.log` | Log Wetter Detail (alle 5 min) |
 | `/home/admin/backup.log` | Log Backups |
 | `/etc/telegraf/telegraf.conf` | Telegraf Konfiguration |
 | `/etc/ssh/sshd_config` | SSH-Konfiguration (PasswordAuthentication no) |
@@ -146,8 +158,11 @@ Anzeigen mit `crontab -l`:
 # Alle 5 Minuten: Fritz!Box Daten erfassen
 */5 * * * * /usr/bin/python3 /home/admin/fritzbox_collector.py >> /home/admin/fritzbox_collector.log 2>&1
 
-# Stündlich: Wetterdaten erfassen
+# Stündlich: Wetterdaten erfassen (Bucket: waerme)
 0 * * * * /usr/bin/python3 /home/admin/weather_collector.py >> /home/admin/weather_collector.log 2>&1
+
+# Alle 5 Minuten: Wetterdaten Detail erfassen (Bucket: wetter-details)
+*/5 * * * * /usr/bin/python3 /home/admin/weather_collector.py --detailed >> /home/admin/weather_collector_detailed.log 2>&1
 
 # Wöchentlich Sonntag 02:00 Uhr: Backup auf NAS
 0 2 * * 0 /home/admin/backup_influx.sh >> /home/admin/backup.log 2>&1
@@ -189,6 +204,7 @@ sudo systemctl restart telegraf
 | Fritz!Box | `fritzbox-monitor` | Internet-Throughput, WLAN, Verbindungsstatus |
 | Fritz!Box Datenvolumen | `fritzbox-traffic` | Übertragene Daten pro Stunde/Tag/Woche/Monat |
 | Wetter Dettenhausen | `wetter-dettenhausen` | Temperatur, Wind, Niederschlag, Luftdruck |
+| Wetter Detail — 24h | `wetter-detail-24h` | Detailansicht letzte 24h, 10min Granularität |
 | waerme-pi System | `waerme-pi-system` | CPU, Temperatur, Disk via Telegraf |
 
 ---
