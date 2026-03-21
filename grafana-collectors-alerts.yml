@@ -1,0 +1,188 @@
+apiVersion: 1
+
+groups:
+  - orgId: 1
+    name: collector-monitoring
+    folder: Alerts
+    interval: 5m
+    rules:
+
+      - uid: alert-uh50
+        title: UH50 Collector
+        condition: C
+        for: 5m
+        annotations:
+          summary: UH50 hat seit mehr als 3 Stunden keine Daten geliefert
+          description: Das uh50_influx.py Script scheint nicht zu laufen oder hat einen Fehler.
+        labels:
+          collector: uh50
+          severity: warning
+        data:
+          - refId: A
+            datasourceUid: ffg8agqls8ow0e
+            model:
+              query: |
+                from(bucket: "waerme")
+                  |> range(start: -3h)
+                  |> filter(fn: (r) => r._measurement == "uh50")
+                  |> count()
+              queryType: flux
+          - refId: C
+            datasourceUid: "-100"
+            model:
+              conditions:
+                - evaluator:
+                    params: [1]
+                    type: lt
+                  operator:
+                    type: and
+                  query:
+                    params: [A]
+                  reducer:
+                    type: last
+                  type: query
+              type: classic_conditions
+
+      - uid: alert-fritzbox
+        title: Fritz!Box Collector
+        condition: C
+        for: 5m
+        annotations:
+          summary: Fritz!Box Collector hat seit mehr als 30 Minuten keine Daten geliefert
+          description: Das fritzbox_collector.py Script scheint nicht zu laufen oder hat einen Fehler.
+        labels:
+          collector: fritzbox
+          severity: warning
+        data:
+          - refId: A
+            datasourceUid: ffg8agqls8ow0e
+            model:
+              query: |
+                from(bucket: "fritzbox")
+                  |> range(start: -30m)
+                  |> filter(fn: (r) => r._measurement == "internet")
+                  |> count()
+              queryType: flux
+          - refId: C
+            datasourceUid: "-100"
+            model:
+              conditions:
+                - evaluator:
+                    params: [1]
+                    type: lt
+                  operator:
+                    type: and
+                  query:
+                    params: [A]
+                  reducer:
+                    type: last
+                  type: query
+              type: classic_conditions
+
+      - uid: alert-weather
+        title: Weather Collector
+        condition: C
+        for: 5m
+        annotations:
+          summary: Weather Collector hat seit mehr als 3 Stunden keine Daten geliefert
+          description: Das weather_collector.py Script scheint nicht zu laufen oder hat einen Fehler.
+        labels:
+          collector: weather
+          severity: warning
+        data:
+          - refId: A
+            datasourceUid: ffg8agqls8ow0e
+            model:
+              query: |
+                from(bucket: "waerme")
+                  |> range(start: -3h)
+                  |> filter(fn: (r) => r._measurement == "weather")
+                  |> count()
+              queryType: flux
+          - refId: C
+            datasourceUid: "-100"
+            model:
+              conditions:
+                - evaluator:
+                    params: [1]
+                    type: lt
+                  operator:
+                    type: and
+                  query:
+                    params: [A]
+                  reducer:
+                    type: last
+                  type: query
+              type: classic_conditions
+
+      - uid: alert-smartplug
+        title: Smart Plug Collector
+        condition: C
+        for: 5m
+        annotations:
+          summary: Smart Plug Collector hat seit mehr als 30 Minuten keine Daten geliefert
+          description: Das wlan-power-collector.py Script scheint nicht zu laufen oder hat einen Fehler.
+        labels:
+          collector: smartplug
+          severity: warning
+        data:
+          - refId: A
+            datasourceUid: ffg8agqls8ow0e
+            model:
+              query: |
+                from(bucket: "tuya-strom")
+                  |> range(start: -30m)
+                  |> filter(fn: (r) => r._measurement == "smart_plug")
+                  |> count()
+              queryType: flux
+          - refId: C
+            datasourceUid: "-100"
+            model:
+              conditions:
+                - evaluator:
+                    params: [1]
+                    type: lt
+                  operator:
+                    type: and
+                  query:
+                    params: [A]
+                  reducer:
+                    type: last
+                  type: query
+              type: classic_conditions
+
+      - uid: alert-telegraf
+        title: Telegraf System Monitoring
+        condition: C
+        for: 5m
+        annotations:
+          summary: Telegraf hat seit mehr als 15 Minuten keine Daten geliefert
+          description: Der Telegraf Dienst scheint nicht zu laufen.
+        labels:
+          collector: telegraf
+          severity: warning
+        data:
+          - refId: A
+            datasourceUid: ffg8agqls8ow0e
+            model:
+              query: |
+                from(bucket: "system")
+                  |> range(start: -15m)
+                  |> filter(fn: (r) => r._measurement == "cpu")
+                  |> count()
+              queryType: flux
+          - refId: C
+            datasourceUid: "-100"
+            model:
+              conditions:
+                - evaluator:
+                    params: [1]
+                    type: lt
+                  operator:
+                    type: and
+                  query:
+                    params: [A]
+                  reducer:
+                    type: last
+                  type: query
+              type: classic_conditions
