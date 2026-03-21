@@ -33,7 +33,8 @@ LOCATION  = os.getenv("WEATHER_LOCATION", "Frankfurt")
 INFLUX_URL    = os.getenv("INFLUX_URL", "http://localhost:8086")
 INFLUX_TOKEN  = os.getenv("INFLUX_TOKEN")
 INFLUX_ORG    = os.getenv("INFLUX_ORG")
-INFLUX_BUCKET_WEATHER = os.getenv("INFLUX_BUCKET_WEATHER", "waerme")
+INFLUX_BUCKET          = os.getenv("INFLUX_BUCKET_WEATHER", "waerme")
+INFLUX_BUCKET_DETAILED = os.getenv("INFLUX_BUCKET_WEATHER_DETAILED", "wetter-details")
 
 # Open-Meteo current weather variables to fetch
 # Full list: https://open-meteo.com/en/docs
@@ -136,15 +137,15 @@ def print_point(p: Point) -> None:
     print("=" * 60 + "\n")
 
 
-def write_to_influx(point: Point) -> None:
+def write_to_influx(point: Point, bucket: str) -> None:
     """Write a Point to InfluxDB."""
     from influxdb_client import InfluxDBClient
     from influxdb_client.client.write_api import SYNCHRONOUS
 
     with InfluxDBClient(url=INFLUX_URL, token=INFLUX_TOKEN, org=INFLUX_ORG) as client:
         write_api = client.write_api(write_options=SYNCHRONOUS)
-        write_api.write(bucket=INFLUX_BUCKET_WEATHER, record=point)
-        log.info("Written to InfluxDB bucket '%s'.", INFLUX_BUCKET_WEATHER)
+        write_api.write(bucket=bucket, record=point)
+        log.info("Written to InfluxDB bucket '%s'.", bucket)
 
 
 def main() -> None:
@@ -154,7 +155,15 @@ def main() -> None:
         action="store_true",
         help="Fetch weather but print to console instead of writing to InfluxDB",
     )
+    parser.add_argument(
+        "--detailed",
+        action="store_true",
+        help=f"Write to detailed bucket ({INFLUX_BUCKET_DETAILED}) instead of standard bucket ({INFLUX_BUCKET})",
+    )
     args = parser.parse_args()
+
+    bucket = INFLUX_BUCKET_DETAILED if args.detailed else INFLUX_BUCKET
+    log.info("Mode: %s  →  bucket: %s", "detailed" if args.detailed else "standard", bucket)
 
     try:
         current = fetch_weather()
@@ -167,7 +176,7 @@ def main() -> None:
     if args.dry_run:
         print_point(point)
     else:
-        write_to_influx(point)
+        write_to_influx(point, bucket)
 
 
 if __name__ == "__main__":
