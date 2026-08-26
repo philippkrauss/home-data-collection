@@ -1,0 +1,262 @@
+{
+  "__inputs": [
+    {
+      "name": "DS_INFLUXDB",
+      "label": "InfluxDB",
+      "description": "InfluxDB v2 Datenquelle (Flux-Modus)",
+      "type": "datasource",
+      "pluginId": "influxdb",
+      "pluginName": "InfluxDB"
+    }
+  ],
+  "__requires": [
+    { "type": "grafana", "id": "grafana", "name": "Grafana", "version": "10.0.0" },
+    { "type": "datasource", "id": "influxdb", "name": "InfluxDB", "version": "1.0.0" },
+    { "type": "panel", "id": "stat", "name": "Stat", "version": "" },
+    { "type": "panel", "id": "state-timeline", "name": "State timeline", "version": "" },
+    { "type": "panel", "id": "timeseries", "name": "Time series", "version": "" },
+    { "type": "panel", "id": "table", "name": "Table", "version": "" }
+  ],
+  "annotations": { "list": [] },
+  "description": "Verfuegbarkeit des Internetanschlusses (Deutsche Glasfaser). Erkenntnis, nicht Alarmierung: wie oft, wie lange, zu welchen Tageszeiten, und ob es an DG oder am Heimnetz liegt.",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "templating": { "list": [] },
+  "panels": [
+
+    {
+      "id": 1,
+      "title": "Verfügbarkeit %",
+      "description": "Anteil der Messpunkte mit internet_up=1 im gewählten Zeitraum",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 8, "x": 0, "y": 0 },
+      "datasource": { "type": "influxdb", "uid": "${DS_INFLUXDB}" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent", "decimals": 2,
+          "color": { "mode": "thresholds" },
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "red", "value": null },
+            { "color": "orange", "value": 95 },
+            { "color": "green", "value": 99.5 }
+          ]}
+        }, "overrides": []
+      },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "textMode": "auto", "colorMode": "value" },
+      "targets": [{
+        "refId": "A",
+        "datasource": { "type": "influxdb", "uid": "${DS_INFLUXDB}" },
+        "query": "from(bucket: \"internet\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"wan\" and r._field == \"internet_up\")\n  |> mean()\n  |> map(fn: (r) => ({ r with _value: r._value * 100.0 }))\n  |> yield(name: \"verfuegbarkeit_pct\")"
+      }]
+    },
+
+    {
+      "id": 2,
+      "title": "Anzahl Ausfälle – letzte 30 Tage",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 8, "x": 8, "y": 0 },
+      "datasource": { "type": "influxdb", "uid": "${DS_INFLUXDB}" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none", "decimals": 0,
+          "color": { "mode": "fixed", "fixedColor": "orange" },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "orange", "value": null }] }
+        }, "overrides": []
+      },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "textMode": "auto", "colorMode": "value" },
+      "targets": [{
+        "refId": "A",
+        "datasource": { "type": "influxdb", "uid": "${DS_INFLUXDB}" },
+        "query": "from(bucket: \"internet\")\n  |> range(start: -30d)\n  |> filter(fn: (r) => r._measurement == \"outage\" and r._field == \"duration_s\")\n  |> count()\n  |> yield(name: \"anzahl_ausfaelle_30d\")"
+      }]
+    },
+
+    {
+      "id": 3,
+      "title": "Längster Ausfall – letzte 30 Tage",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 8, "x": 16, "y": 0 },
+      "datasource": { "type": "influxdb", "uid": "${DS_INFLUXDB}" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s", "decimals": 0,
+          "color": { "mode": "fixed", "fixedColor": "red" },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }] }
+        }, "overrides": []
+      },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "textMode": "auto", "colorMode": "value" },
+      "targets": [{
+        "refId": "A",
+        "datasource": { "type": "influxdb", "uid": "${DS_INFLUXDB}" },
+        "query": "from(bucket: \"internet\")\n  |> range(start: -30d)\n  |> filter(fn: (r) => r._measurement == \"outage\" and r._field == \"duration_s\")\n  |> max()\n  |> yield(name: \"laengster_ausfall_30d\")"
+      }]
+    },
+
+    {
+      "id": 4,
+      "title": "Verfügbarkeit",
+      "description": "internet_up über den gewählten Zeitraum – mindestens ein externes Ziel erreichbar",
+      "type": "state-timeline",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 4 },
+      "datasource": { "type": "influxdb", "uid": "${DS_INFLUXDB}" },
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "lineWidth": 0, "fillOpacity": 100 },
+          "mappings": [
+            { "type": "value", "options": {
+              "0": { "text": "Ausfall", "color": "red", "index": 0 },
+              "1": { "text": "OK", "color": "green", "index": 1 }
+            }}
+          ],
+          "color": { "mode": "thresholds" },
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "red", "value": null },
+            { "color": "green", "value": 1 }
+          ]}
+        },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "internet_up" }, "properties": [{ "id": "displayName", "value": "Internet" }] }
+        ]
+      },
+      "options": {
+        "mergeValues": true, "showValue": "never", "alignValue": "left", "rowHeight": 0.9,
+        "legend": { "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "single" }
+      },
+      "targets": [{
+        "refId": "A",
+        "datasource": { "type": "influxdb", "uid": "${DS_INFLUXDB}" },
+        "query": "from(bucket: \"internet\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"wan\" and r._field == \"internet_up\")\n  |> yield(name: \"internet_up\")"
+      }]
+    },
+
+    {
+      "id": 5,
+      "title": "IPv4 vs. IPv6",
+      "description": "Trennt AFTR-/DS-Lite-Probleme (nur IPv4 weg) von echten Leitungsausfällen (beides weg)",
+      "type": "state-timeline",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 12 },
+      "datasource": { "type": "influxdb", "uid": "${DS_INFLUXDB}" },
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "lineWidth": 0, "fillOpacity": 100 },
+          "mappings": [
+            { "type": "value", "options": {
+              "0": { "text": "Ausfall", "color": "red", "index": 0 },
+              "1": { "text": "OK", "color": "green", "index": 1 }
+            }}
+          ],
+          "color": { "mode": "thresholds" },
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "red", "value": null },
+            { "color": "green", "value": 1 }
+          ]}
+        },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "internet_up_v4" }, "properties": [{ "id": "displayName", "value": "IPv4" }] },
+          { "matcher": { "id": "byName", "options": "internet_up_v6" }, "properties": [{ "id": "displayName", "value": "IPv6" }] }
+        ]
+      },
+      "options": {
+        "mergeValues": true, "showValue": "never", "alignValue": "left", "rowHeight": 0.9,
+        "legend": { "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "single" }
+      },
+      "targets": [{
+        "refId": "A",
+        "datasource": { "type": "influxdb", "uid": "${DS_INFLUXDB}" },
+        "query": "from(bucket: \"internet\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"wan\" and (r._field == \"internet_up_v4\" or r._field == \"internet_up_v6\"))\n  |> yield(name: \"ipv4_ipv6\")"
+      }]
+    },
+
+    {
+      "id": 6,
+      "title": "Latenz je Ziel",
+      "description": "rtt_ms pro Ziel – zeigt eine schleichende Verschlechterung vor einem Ausfall",
+      "type": "timeseries",
+      "gridPos": { "h": 9, "w": 24, "x": 0, "y": 20 },
+      "datasource": { "type": "influxdb", "uid": "${DS_INFLUXDB}" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms", "min": 0,
+          "custom": { "lineWidth": 2, "fillOpacity": 10, "spanNulls": false }
+        },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "_value" }, "properties": [{ "id": "displayName", "value": "${__field.labels.target}" }] }
+        ]
+      },
+      "options": {
+        "tooltip": { "mode": "multi", "sort": "none" },
+        "legend": { "displayMode": "list", "placement": "bottom", "calcs": ["mean", "max"] }
+      },
+      "targets": [{
+        "refId": "A",
+        "datasource": { "type": "influxdb", "uid": "${DS_INFLUXDB}" },
+        "query": "from(bucket: \"internet\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"connectivity\" and r._field == \"rtt_ms\")\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\n  |> yield(name: \"rtt\")"
+      }]
+    },
+
+    {
+      "id": 7,
+      "title": "Ausfälle – letzte 30 Tage",
+      "description": "Aus dem outage-Measurement, unabhängig vom Dashboard-Zeitraum",
+      "type": "table",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 29 },
+      "datasource": { "type": "influxdb", "uid": "${DS_INFLUXDB}" },
+      "fieldConfig": {
+        "defaults": { "custom": { "align": "auto" } },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "_time" }, "properties": [{ "id": "displayName", "value": "Zeitpunkt" }] },
+          { "matcher": { "id": "byName", "options": "duration_s" }, "properties": [
+            { "id": "displayName", "value": "Dauer" }, { "id": "unit", "value": "s" }
+          ]},
+          { "matcher": { "id": "byName", "options": "targets_lost" }, "properties": [{ "id": "displayName", "value": "Verlorene Ziele" }] }
+        ]
+      },
+      "options": { "showHeader": true, "sortBy": [{ "displayName": "Zeitpunkt", "desc": true }] },
+      "targets": [{
+        "refId": "A",
+        "datasource": { "type": "influxdb", "uid": "${DS_INFLUXDB}" },
+        "query": "from(bucket: \"internet\")\n  |> range(start: -30d)\n  |> filter(fn: (r) => r._measurement == \"outage\")\n  |> pivot(rowKey: [\"_time\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n  |> keep(columns: [\"_time\", \"duration_s\", \"targets_lost\"])\n  |> sort(columns: [\"_time\"], desc: true)\n  |> yield(name: \"ausfaelle\")"
+      }]
+    },
+
+    {
+      "id": 8,
+      "title": "Messlücken",
+      "description": "Aus dem gap-Measurement: Lücken im Messbetrieb selbst, klassifiziert nach power/wan/collector",
+      "type": "table",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 29 },
+      "datasource": { "type": "influxdb", "uid": "${DS_INFLUXDB}" },
+      "fieldConfig": {
+        "defaults": { "custom": { "align": "auto" } },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "_time" }, "properties": [{ "id": "displayName", "value": "Zeitpunkt" }] },
+          { "matcher": { "id": "byName", "options": "duration_s" }, "properties": [
+            { "id": "displayName", "value": "Dauer" }, { "id": "unit", "value": "s" }
+          ]},
+          { "matcher": { "id": "byName", "options": "cause" }, "properties": [{ "id": "displayName", "value": "Ursache" }] }
+        ]
+      },
+      "options": { "showHeader": true, "sortBy": [{ "displayName": "Zeitpunkt", "desc": true }] },
+      "targets": [{
+        "refId": "A",
+        "datasource": { "type": "influxdb", "uid": "${DS_INFLUXDB}" },
+        "query": "from(bucket: \"internet\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"gap\")\n  |> pivot(rowKey: [\"_time\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n  |> keep(columns: [\"_time\", \"duration_s\", \"cause\"])\n  |> sort(columns: [\"_time\"], desc: true)\n  |> yield(name: \"messluecken\")"
+      }]
+    }
+
+  ],
+  "refresh": "1m",
+  "schemaVersion": 38,
+  "tags": ["internet", "uptime", "dsl", "verfuegbarkeit"],
+  "time": { "from": "now-7d", "to": "now" },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "Internet – Verfügbarkeit",
+  "uid": "internet-uptime-v1",
+  "version": 1
+}

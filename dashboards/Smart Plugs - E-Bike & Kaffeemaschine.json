@@ -1,0 +1,312 @@
+{
+  "__inputs": [
+    {
+      "name": "DS_INFLUXDB",
+      "label": "InfluxDB",
+      "description": "InfluxDB v2 Datenquelle (Flux-Modus)",
+      "type": "datasource",
+      "pluginId": "influxdb",
+      "pluginName": "InfluxDB"
+    }
+  ],
+  "__requires": [
+    { "type": "grafana", "id": "grafana", "name": "Grafana", "version": "10.0.0" },
+    { "type": "datasource", "id": "influxdb", "name": "InfluxDB", "version": "1.0.0" },
+    { "type": "panel", "id": "stat", "name": "Stat", "version": "" },
+    { "type": "panel", "id": "timeseries", "name": "Time series", "version": "" },
+    { "type": "panel", "id": "barchart", "name": "Bar chart", "version": "" }
+  ],
+  "annotations": { "list": [] },
+  "description": "Detailanalyse beider WLAN-Steckdosen: E-Bike-Ladesitzungen und Kaffeemaschinen-Nutzung im Vergleich. Alle Geräte werden automatisch aus der InfluxDB-Datenbank geladen.",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "templating": {
+    "list": [
+      {
+        "current": {},
+        "datasource": { "type": "influxdb", "uid": "${DS_INFLUXDB}" },
+        "definition": "from(bucket: \"tuya-strom\")\n  |> range(start: -1h)\n  |> filter(fn: (r) => r._measurement == \"smart_plug\")\n  |> keep(columns: [\"device\"])\n  |> distinct(column: \"device\")",
+        "hide": 0,
+        "includeAll": false,
+        "multi": false,
+        "name": "device",
+        "options": [],
+        "query": "from(bucket: \"tuya-strom\")\n  |> range(start: -1h)\n  |> filter(fn: (r) => r._measurement == \"smart_plug\")\n  |> keep(columns: [\"device\"])\n  |> distinct(column: \"device\")",
+        "refresh": 2,
+        "sort": 1,
+        "type": "query",
+        "label": "Gerät (Detail)"
+      }
+    ]
+  },
+  "panels": [
+
+    {
+      "id": 1,
+      "title": "Smart Plugs gesamt – heute",
+      "description": "Summe aller WLAN-Steckdosen",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 4, "x": 0, "y": 0 },
+      "datasource": { "type": "influxdb", "uid": "${DS_INFLUXDB}" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "kwatth", "decimals": 3,
+          "color": { "mode": "fixed", "fixedColor": "green" },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }]}
+        }, "overrides": []
+      },
+      "options": { "reduceOptions": { "calcs": ["sum"] }, "textMode": "auto", "colorMode": "value" },
+      "targets": [{
+        "refId": "A",
+        "datasource": { "type": "influxdb", "uid": "${DS_INFLUXDB}" },
+        "query": "from(bucket: \"tuya-strom\")\n  |> range(start: today())\n  |> filter(fn: (r) => r._measurement == \"smart_plug\" and r._field == \"energy_kwh\")\n  |> aggregateWindow(every: 1h, fn: max, createEmpty: false)\n  |> difference(nonNegative: true)\n  |> group()\n  |> sum()\n  |> yield(name: \"gesamt_heute\")"
+      }]
+    },
+
+    {
+      "id": 2,
+      "title": "Ausgewähltes Gerät – heute",
+      "description": "Verbrauch des im Dropdown gewählten Geräts",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 4, "x": 4, "y": 0 },
+      "datasource": { "type": "influxdb", "uid": "${DS_INFLUXDB}" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "kwatth", "decimals": 3,
+          "color": { "mode": "fixed", "fixedColor": "orange" },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "orange", "value": null }]}
+        }, "overrides": []
+      },
+      "options": { "reduceOptions": { "calcs": ["sum"] }, "textMode": "auto", "colorMode": "value" },
+      "targets": [{
+        "refId": "A",
+        "datasource": { "type": "influxdb", "uid": "${DS_INFLUXDB}" },
+        "query": "from(bucket: \"tuya-strom\")\n  |> range(start: today())\n  |> filter(fn: (r) => r._measurement == \"smart_plug\" and r._field == \"energy_kwh\")\n  |> filter(fn: (r) => r.device == \"${device}\")\n  |> aggregateWindow(every: 1h, fn: max, createEmpty: false)\n  |> difference(nonNegative: true)\n  |> sum()\n  |> yield(name: \"geraet_heute\")"
+      }]
+    },
+
+    {
+      "id": 3,
+      "title": "Ausgewähltes Gerät – letzte 7 Tage",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 4, "x": 8, "y": 0 },
+      "datasource": { "type": "influxdb", "uid": "${DS_INFLUXDB}" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "kwatth", "decimals": 2,
+          "color": { "mode": "fixed", "fixedColor": "orange" },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "orange", "value": null }]}
+        }, "overrides": []
+      },
+      "options": { "reduceOptions": { "calcs": ["sum"] }, "textMode": "auto", "colorMode": "value" },
+      "targets": [{
+        "refId": "A",
+        "datasource": { "type": "influxdb", "uid": "${DS_INFLUXDB}" },
+        "query": "from(bucket: \"tuya-strom\")\n  |> range(start: -7d)\n  |> filter(fn: (r) => r._measurement == \"smart_plug\" and r._field == \"energy_kwh\")\n  |> filter(fn: (r) => r.device == \"${device}\")\n  |> aggregateWindow(every: 1h, fn: max, createEmpty: false)\n  |> difference(nonNegative: true)\n  |> sum()\n  |> yield(name: \"geraet_7d\")"
+      }]
+    },
+
+    {
+      "id": 4,
+      "title": "Ausgewähltes Gerät – aktuelle Leistung",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 3, "x": 12, "y": 0 },
+      "datasource": { "type": "influxdb", "uid": "${DS_INFLUXDB}" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "watt", "decimals": 1,
+          "color": { "mode": "thresholds" },
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "blue", "value": null },
+            { "color": "yellow", "value": 100 },
+            { "color": "orange", "value": 500 },
+            { "color": "red", "value": 1500 }
+          ]}
+        }, "overrides": []
+      },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "textMode": "auto", "colorMode": "background" },
+      "targets": [{
+        "refId": "A",
+        "datasource": { "type": "influxdb", "uid": "${DS_INFLUXDB}" },
+        "query": "from(bucket: \"tuya-strom\")\n  |> range(start: -1h)\n  |> filter(fn: (r) => r._measurement == \"smart_plug\" and r._field == \"power_w\")\n  |> filter(fn: (r) => r.device == \"${device}\")\n  |> last()\n  |> yield(name: \"power_now\")"
+      }]
+    },
+
+    {
+      "id": 5,
+      "title": "Status (An/Aus)",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 3, "x": 15, "y": 0 },
+      "datasource": { "type": "influxdb", "uid": "${DS_INFLUXDB}" },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            { "type": "value", "options": {
+              "0": { "text": "Aus", "color": "blue" },
+              "1": { "text": "An", "color": "green" }
+            }}
+          ],
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "blue", "value": null },
+            { "color": "green", "value": 1 }
+          ]},
+          "color": { "mode": "thresholds" }
+        }, "overrides": []
+      },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "textMode": "auto", "colorMode": "background" },
+      "targets": [{
+        "refId": "A",
+        "datasource": { "type": "influxdb", "uid": "${DS_INFLUXDB}" },
+        "query": "from(bucket: \"tuya-strom\")\n  |> range(start: -1h)\n  |> filter(fn: (r) => r._measurement == \"smart_plug\" and r._field == \"switch\")\n  |> filter(fn: (r) => r.device == \"${device}\")\n  |> last()\n  |> yield(name: \"status\")"
+      }]
+    },
+
+    {
+      "id": 6,
+      "title": "Smart Plugs gesamt – letzte 30 Tage",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 3, "x": 18, "y": 0 },
+      "datasource": { "type": "influxdb", "uid": "${DS_INFLUXDB}" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "kwatth", "decimals": 1,
+          "color": { "mode": "fixed", "fixedColor": "green" },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }]}
+        }, "overrides": []
+      },
+      "options": { "reduceOptions": { "calcs": ["sum"] }, "textMode": "auto", "colorMode": "value" },
+      "targets": [{
+        "refId": "A",
+        "datasource": { "type": "influxdb", "uid": "${DS_INFLUXDB}" },
+        "query": "from(bucket: \"tuya-strom\")\n  |> range(start: -30d)\n  |> filter(fn: (r) => r._measurement == \"smart_plug\" and r._field == \"energy_kwh\")\n  |> aggregateWindow(every: 1h, fn: max, createEmpty: false)\n  |> difference(nonNegative: true)\n  |> group()\n  |> sum()\n  |> yield(name: \"gesamt_30d\")"
+      }]
+    },
+
+    {
+      "id": 7,
+      "title": "Spannung / Stromstärke (aktuell)",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 3, "x": 21, "y": 0 },
+      "datasource": { "type": "influxdb", "uid": "${DS_INFLUXDB}" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "volt", "decimals": 1,
+          "color": { "mode": "fixed", "fixedColor": "blue" }
+        },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "voltage_v" }, "properties": [
+            { "id": "displayName", "value": "Spannung (V)" }
+          ]},
+          { "matcher": { "id": "byName", "options": "current_ma" }, "properties": [
+            { "id": "displayName", "value": "Strom (mA)" },
+            { "id": "unit", "value": "mamp" },
+            { "id": "color", "value": { "mode": "fixed", "fixedColor": "purple" }}
+          ]}
+        ]
+      },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "textMode": "auto", "colorMode": "value", "orientation": "horizontal" },
+      "targets": [{
+        "refId": "A",
+        "datasource": { "type": "influxdb", "uid": "${DS_INFLUXDB}" },
+        "query": "from(bucket: \"tuya-strom\")\n  |> range(start: -1h)\n  |> filter(fn: (r) => r._measurement == \"smart_plug\" and (r._field == \"voltage_v\" or r._field == \"current_ma\"))\n  |> filter(fn: (r) => r.device == \"${device}\")\n  |> last()\n  |> yield(name: \"elektrik\")"
+      }]
+    },
+
+    {
+      "id": 8,
+      "title": "🔌 Leistungsprofil – alle Geräte im Vergleich",
+      "description": "Watt-Aufnahme aller WLAN-Steckdosen. Jede Linie = ein Gerät. Zeigt Ladesitzungen (E-Bike: hohe Leistung für Stunden) und Kaffeemaschine (kurze Spitzen).",
+      "type": "timeseries",
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 4 },
+      "datasource": { "type": "influxdb", "uid": "${DS_INFLUXDB}" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "watt", "min": 0,
+          "custom": { "lineWidth": 2, "fillOpacity": 15, "spanNulls": false }
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": { "mode": "multi", "sort": "none" },
+        "legend": { "displayMode": "list", "placement": "bottom", "calcs": ["mean", "max"] }
+      },
+      "targets": [{
+        "refId": "A",
+        "datasource": { "type": "influxdb", "uid": "${DS_INFLUXDB}" },
+        "query": "from(bucket: \"tuya-strom\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"smart_plug\" and r._field == \"power_w\")\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\n  |> yield(name: \"power\")"
+      }]
+    },
+
+    {
+      "id": 9,
+      "title": "Tagesverbrauch – ausgewähltes Gerät",
+      "description": "Täglicher Energieverbrauch für das ausgewählte Gerät. E-Bike: mehr im Sommer/Herbst. Kaffeemaschine: gleichmäßig das ganze Jahr.",
+      "type": "barchart",
+      "gridPos": { "h": 9, "w": 12, "x": 0, "y": 14 },
+      "datasource": { "type": "influxdb", "uid": "${DS_INFLUXDB}" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "kwatth", "decimals": 3,
+          "color": { "mode": "fixed", "fixedColor": "orange" },
+          "custom": { "fillOpacity": 80, "lineWidth": 1 },
+          "min": 0
+        },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "_value" }, "properties": [{ "id": "displayName", "value": "Verbrauch (kWh/Tag)" }]}
+        ]
+      },
+      "options": {
+        "xTickLabelRotation": -45,
+        "tooltip": { "mode": "single" },
+        "legend": { "displayMode": "list", "placement": "bottom", "calcs": ["sum", "mean", "max"] },
+        "barWidth": 0.7
+      },
+      "targets": [{
+        "refId": "A",
+        "datasource": { "type": "influxdb", "uid": "${DS_INFLUXDB}" },
+        "query": "from(bucket: \"tuya-strom\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"smart_plug\" and r._field == \"energy_kwh\")\n  |> filter(fn: (r) => r.device == \"${device}\")\n  |> aggregateWindow(every: 1d, fn: max, createEmpty: false)\n  |> difference(nonNegative: true)\n  |> yield(name: \"daily\")"
+      }]
+    },
+
+    {
+      "id": 10,
+      "title": "Tagesverbrauch – alle Geräte verglichen",
+      "description": "Alle Geräte nebeneinander. Zeigt, welches Gerät wann wie viel verbraucht.",
+      "type": "timeseries",
+      "gridPos": { "h": 9, "w": 12, "x": 12, "y": 14 },
+      "datasource": { "type": "influxdb", "uid": "${DS_INFLUXDB}" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "kwatth", "min": 0,
+          "custom": {
+            "drawStyle": "bars", "barAlignment": -1,
+            "fillOpacity": 60, "lineWidth": 0, "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": { "mode": "multi", "sort": "none" },
+        "legend": { "displayMode": "list", "placement": "bottom", "calcs": ["sum", "mean"] }
+      },
+      "targets": [{
+        "refId": "A",
+        "datasource": { "type": "influxdb", "uid": "${DS_INFLUXDB}" },
+        "query": "from(bucket: \"tuya-strom\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"smart_plug\" and r._field == \"energy_kwh\")\n  |> aggregateWindow(every: 1d, fn: max, createEmpty: false)\n  |> difference(nonNegative: true)\n  |> yield(name: \"daily_all\")"
+      }]
+    }
+
+  ],
+  "refresh": "5m",
+  "schemaVersion": 38,
+  "tags": ["tuya", "smart-plug", "ebike", "kaffeemaschine"],
+  "time": { "from": "now-7d", "to": "now" },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "Smart Plugs – E-Bike & Kaffeemaschine",
+  "uid": "smart-plug-vergleich-v1",
+  "version": 1
+}

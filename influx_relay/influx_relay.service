@@ -1,0 +1,31 @@
+# ============================================================
+#  influx_relay.service – systemd-Unit für den InfluxDB-Relay
+#
+#  Einrichten:
+#    sudo cp influx_relay.service /etc/systemd/system/
+#    sudo systemctl daemon-reload
+#    sudo systemctl enable influx_relay
+#    sudo systemctl start influx_relay
+#
+#  Status prüfen:
+#    sudo systemctl status influx_relay
+#    journalctl -u influx_relay -f
+# ============================================================
+
+[Unit]
+Description=InfluxDB HTTP→HTTPS Relay für ESP8266
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=admin
+# Pfad anpassen falls das Skript woanders liegt!
+ExecStart=/usr/bin/python3 /home/admin/influx_relay.py
+Restart=on-failure
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

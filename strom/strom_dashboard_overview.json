@@ -1,0 +1,342 @@
+{
+  "__inputs": [
+    {
+      "name": "DS_INFLUXDB",
+      "label": "InfluxDB",
+      "description": "InfluxDB v2 Datenquelle (Flux-Modus konfiguriert)",
+      "type": "datasource",
+      "pluginId": "influxdb",
+      "pluginName": "InfluxDB"
+    }
+  ],
+  "__requires": [
+    {
+      "type": "grafana",
+      "id": "grafana",
+      "name": "Grafana",
+      "version": "10.0.0"
+    },
+    {
+      "type": "datasource",
+      "id": "influxdb",
+      "name": "InfluxDB",
+      "version": "1.0.0"
+    },
+    {
+      "type": "panel",
+      "id": "stat",
+      "name": "Stat",
+      "version": ""
+    },
+    {
+      "type": "panel",
+      "id": "timeseries",
+      "name": "Time series",
+      "version": ""
+    },
+    {
+      "type": "panel",
+      "id": "barchart",
+      "name": "Bar chart",
+      "version": ""
+    }
+  ],
+  "annotations": { "list": [] },
+  "description": "Stromverbrauch Übersicht – Easymeter EasyM60 via InfluxDB. Alle Verbrauchswerte werden aus dem absoluten Zählerstand berechnet (difference nonNegative).",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "id": 1,
+      "title": "Aktueller Zählerstand",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
+      "datasource": { "type": "influxdb", "uid": "${DS_INFLUXDB}" },
+      "description": "Aktueller Gesamtzählerstand des Stromzählers in kWh",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "kwatth",
+          "decimals": 1,
+          "color": { "mode": "fixed", "fixedColor": "blue" },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "blue", "value": null }] }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "textMode": "auto",
+        "colorMode": "value",
+        "orientation": "auto"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "influxdb", "uid": "${DS_INFLUXDB}" },
+          "query": "from(bucket: \"strom\")\n  |> range(start: -2h)\n  |> filter(fn: (r) => r._measurement == \"easymeter\" and r._field == \"energie_kwh\")\n  |> last()\n  |> yield(name: \"zaehlerstand\")"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Heute",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 4, "x": 6, "y": 0 },
+      "datasource": { "type": "influxdb", "uid": "${DS_INFLUXDB}" },
+      "description": "Verbrauch seit Mitternacht UTC",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "kwatth",
+          "decimals": 2,
+          "color": { "mode": "fixed", "fixedColor": "green" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 15 },
+              { "color": "red", "value": 25 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["sum"] },
+        "textMode": "auto",
+        "colorMode": "background",
+        "orientation": "auto"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "influxdb", "uid": "${DS_INFLUXDB}" },
+          "query": "from(bucket: \"strom\")\n  |> range(start: today())\n  |> filter(fn: (r) => r._measurement == \"easymeter\" and r._field == \"energie_kwh\")\n  |> aggregateWindow(every: 1h, fn: max, createEmpty: false)\n  |> difference(nonNegative: true)\n  |> yield(name: \"heute\")"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Letzte 7 Tage",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 4, "x": 10, "y": 0 },
+      "datasource": { "type": "influxdb", "uid": "${DS_INFLUXDB}" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "kwatth",
+          "decimals": 1,
+          "color": { "mode": "fixed", "fixedColor": "green" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 80 },
+              { "color": "red", "value": 130 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["sum"] },
+        "textMode": "auto",
+        "colorMode": "background",
+        "orientation": "auto"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "influxdb", "uid": "${DS_INFLUXDB}" },
+          "query": "from(bucket: \"strom\")\n  |> range(start: -7d)\n  |> filter(fn: (r) => r._measurement == \"easymeter\" and r._field == \"energie_kwh\")\n  |> aggregateWindow(every: 1h, fn: max, createEmpty: false)\n  |> difference(nonNegative: true)\n  |> yield(name: \"7d\")"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Letzte 30 Tage",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 5, "x": 14, "y": 0 },
+      "datasource": { "type": "influxdb", "uid": "${DS_INFLUXDB}" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "kwatth",
+          "decimals": 1,
+          "color": { "mode": "fixed", "fixedColor": "green" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 300 },
+              { "color": "red", "value": 500 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["sum"] },
+        "textMode": "auto",
+        "colorMode": "background",
+        "orientation": "auto"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "influxdb", "uid": "${DS_INFLUXDB}" },
+          "query": "from(bucket: \"strom\")\n  |> range(start: -30d)\n  |> filter(fn: (r) => r._measurement == \"easymeter\" and r._field == \"energie_kwh\")\n  |> aggregateWindow(every: 1d, fn: max, createEmpty: false)\n  |> difference(nonNegative: true)\n  |> yield(name: \"30d\")"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "Letzte 365 Tage",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 5, "x": 19, "y": 0 },
+      "datasource": { "type": "influxdb", "uid": "${DS_INFLUXDB}" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "kwatth",
+          "decimals": 0,
+          "color": { "mode": "fixed", "fixedColor": "green" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 3000 },
+              { "color": "red", "value": 5000 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["sum"] },
+        "textMode": "auto",
+        "colorMode": "background",
+        "orientation": "auto"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "influxdb", "uid": "${DS_INFLUXDB}" },
+          "query": "from(bucket: \"strom\")\n  |> range(start: -365d)\n  |> filter(fn: (r) => r._measurement == \"easymeter\" and r._field == \"energie_kwh\")\n  |> aggregateWindow(every: 1d, fn: max, createEmpty: false)\n  |> difference(nonNegative: true)\n  |> yield(name: \"365d\")"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "Stündlicher Verbrauch – letzte 7 Tage",
+      "description": "Verbrauch pro Stunde – gut geeignet um Tagesgänge und Verbrauchsspitzen zu erkennen",
+      "type": "barchart",
+      "gridPos": { "h": 9, "w": 24, "x": 0, "y": 4 },
+      "datasource": { "type": "influxdb", "uid": "${DS_INFLUXDB}" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "kwatth",
+          "decimals": 3,
+          "color": { "mode": "fixed", "fixedColor": "orange" },
+          "custom": { "fillOpacity": 80, "lineWidth": 1 }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "_value" },
+            "properties": [{ "id": "displayName", "value": "Verbrauch (kWh)" }]
+          }
+        ]
+      },
+      "options": {
+        "xTickLabelRotation": -45,
+        "tooltip": { "mode": "single", "sort": "none" },
+        "legend": { "displayMode": "list", "placement": "bottom", "calcs": ["sum", "mean", "max"] },
+        "barWidth": 0.7
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "influxdb", "uid": "${DS_INFLUXDB}" },
+          "query": "from(bucket: \"strom\")\n  |> range(start: -7d)\n  |> filter(fn: (r) => r._measurement == \"easymeter\" and r._field == \"energie_kwh\")\n  |> aggregateWindow(every: 1h, fn: max, createEmpty: false)\n  |> difference(nonNegative: true)\n  |> yield(name: \"hourly\")"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "title": "Tagesverbrauch – letzte 30 Tage",
+      "description": "Verbrauch pro Tag in kWh",
+      "type": "barchart",
+      "gridPos": { "h": 9, "w": 12, "x": 0, "y": 13 },
+      "datasource": { "type": "influxdb", "uid": "${DS_INFLUXDB}" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "kwatth",
+          "decimals": 2,
+          "color": { "mode": "fixed", "fixedColor": "blue" },
+          "custom": { "fillOpacity": 80, "lineWidth": 1 }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "_value" },
+            "properties": [{ "id": "displayName", "value": "Tagesverbrauch (kWh)" }]
+          }
+        ]
+      },
+      "options": {
+        "xTickLabelRotation": -45,
+        "tooltip": { "mode": "single", "sort": "none" },
+        "legend": { "displayMode": "list", "placement": "bottom", "calcs": ["sum", "mean", "max"] },
+        "barWidth": 0.7
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "influxdb", "uid": "${DS_INFLUXDB}" },
+          "query": "from(bucket: \"strom\")\n  |> range(start: -30d)\n  |> filter(fn: (r) => r._measurement == \"easymeter\" and r._field == \"energie_kwh\")\n  |> aggregateWindow(every: 1d, fn: max, createEmpty: false)\n  |> difference(nonNegative: true)\n  |> yield(name: \"daily\")"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "title": "Monatlicher Verbrauch – letzte 13 Monate",
+      "description": "Verbrauch pro Monat in kWh. Letzter Balken = laufender Monat (unvollständig).",
+      "type": "barchart",
+      "gridPos": { "h": 9, "w": 12, "x": 12, "y": 13 },
+      "datasource": { "type": "influxdb", "uid": "${DS_INFLUXDB}" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "kwatth",
+          "decimals": 1,
+          "color": { "mode": "fixed", "fixedColor": "purple" },
+          "custom": { "fillOpacity": 80, "lineWidth": 1 }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "_value" },
+            "properties": [{ "id": "displayName", "value": "Monatsverbrauch (kWh)" }]
+          }
+        ]
+      },
+      "options": {
+        "xTickLabelRotation": -45,
+        "tooltip": { "mode": "single", "sort": "none" },
+        "legend": { "displayMode": "list", "placement": "bottom", "calcs": ["sum", "mean", "max"] },
+        "barWidth": 0.7
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "influxdb", "uid": "${DS_INFLUXDB}" },
+          "query": "from(bucket: \"strom\")\n  |> range(start: -13mo)\n  |> filter(fn: (r) => r._measurement == \"easymeter\" and r._field == \"energie_kwh\")\n  |> aggregateWindow(every: 1mo, fn: max, createEmpty: false)\n  |> difference(nonNegative: true)\n  |> yield(name: \"monthly\")"
+        }
+      ]
+    }
+  ],
+  "refresh": "5m",
+  "schemaVersion": 38,
+  "tags": ["strom", "easymeter", "energie"],
+  "time": { "from": "now-30d", "to": "now" },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "Stromverbrauch Übersicht",
+  "uid": "strom-overview-v1",
+  "version": 1
+}

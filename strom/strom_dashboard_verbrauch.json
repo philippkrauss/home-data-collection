@@ -1,0 +1,206 @@
+{
+  "__inputs": [
+    {
+      "name": "DS_INFLUXDB",
+      "label": "InfluxDB",
+      "description": "InfluxDB v2 Datenquelle (Flux-Modus konfiguriert)",
+      "type": "datasource",
+      "pluginId": "influxdb",
+      "pluginName": "InfluxDB"
+    }
+  ],
+  "__requires": [
+    {
+      "type": "grafana",
+      "id": "grafana",
+      "name": "Grafana",
+      "version": "10.0.0"
+    },
+    {
+      "type": "datasource",
+      "id": "influxdb",
+      "name": "InfluxDB",
+      "version": "1.0.0"
+    },
+    {
+      "type": "panel",
+      "id": "barchart",
+      "name": "Bar chart",
+      "version": ""
+    }
+  ],
+  "annotations": { "list": [] },
+  "description": "Stromverbrauch mit fixen Zeitfenstern – Zeiträume sind in den Flux-Queries hart kodiert und ändern sich nicht mit dem Dashboard-Zeitpicker.",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "id": 1,
+      "title": "Letzte 24 Stunden (10-Min-Granularität)",
+      "description": "Verbrauch der letzten 24 Stunden in 10-Minuten-Schritten. Zeitfenster ist fix – unabhängig vom Dashboard-Zeitpicker.",
+      "type": "barchart",
+      "gridPos": { "h": 11, "w": 12, "x": 0, "y": 0 },
+      "datasource": { "type": "influxdb", "uid": "${DS_INFLUXDB}" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "kwatth",
+          "decimals": 3,
+          "color": { "mode": "fixed", "fixedColor": "orange" },
+          "custom": { "fillOpacity": 80, "lineWidth": 1 }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "_value" },
+            "properties": [{ "id": "displayName", "value": "Verbrauch (kWh/10min)" }]
+          }
+        ]
+      },
+      "options": {
+        "xTickLabelRotation": -45,
+        "tooltip": { "mode": "single", "sort": "none" },
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": ["sum", "mean", "max"]
+        },
+        "barWidth": 0.8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "influxdb", "uid": "${DS_INFLUXDB}" },
+          "query": "from(bucket: \"strom\")\n  |> range(start: -24h)\n  |> filter(fn: (r) => r._measurement == \"easymeter\" and r._field == \"energie_kwh\")\n  |> aggregateWindow(every: 10m, fn: max, createEmpty: false)\n  |> difference(nonNegative: true)\n  |> yield(name: \"24h\")"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Letzte 7 Tage (Stunden-Granularität)",
+      "description": "Verbrauch der letzten 7 Tage in Stundenschritten. Zeitfenster ist fix – unabhängig vom Dashboard-Zeitpicker.",
+      "type": "barchart",
+      "gridPos": { "h": 11, "w": 12, "x": 12, "y": 0 },
+      "datasource": { "type": "influxdb", "uid": "${DS_INFLUXDB}" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "kwatth",
+          "decimals": 3,
+          "color": { "mode": "fixed", "fixedColor": "blue" },
+          "custom": { "fillOpacity": 80, "lineWidth": 1 }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "_value" },
+            "properties": [{ "id": "displayName", "value": "Verbrauch (kWh/h)" }]
+          }
+        ]
+      },
+      "options": {
+        "xTickLabelRotation": -45,
+        "tooltip": { "mode": "single", "sort": "none" },
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": ["sum", "mean", "max"]
+        },
+        "barWidth": 0.7
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "influxdb", "uid": "${DS_INFLUXDB}" },
+          "query": "from(bucket: \"strom\")\n  |> range(start: -7d)\n  |> filter(fn: (r) => r._measurement == \"easymeter\" and r._field == \"energie_kwh\")\n  |> aggregateWindow(every: 1h, fn: max, createEmpty: false)\n  |> difference(nonNegative: true)\n  |> yield(name: \"7d\")"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Letzte 30 Tage (Tages-Granularität)",
+      "description": "Tagesverbrauch der letzten 30 Tage. Zeitfenster ist fix – unabhängig vom Dashboard-Zeitpicker.",
+      "type": "barchart",
+      "gridPos": { "h": 11, "w": 12, "x": 0, "y": 11 },
+      "datasource": { "type": "influxdb", "uid": "${DS_INFLUXDB}" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "kwatth",
+          "decimals": 2,
+          "color": { "mode": "fixed", "fixedColor": "green" },
+          "custom": { "fillOpacity": 80, "lineWidth": 1 }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "_value" },
+            "properties": [{ "id": "displayName", "value": "Tagesverbrauch (kWh)" }]
+          }
+        ]
+      },
+      "options": {
+        "xTickLabelRotation": -45,
+        "tooltip": { "mode": "single", "sort": "none" },
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": ["sum", "mean", "max"]
+        },
+        "barWidth": 0.7
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "influxdb", "uid": "${DS_INFLUXDB}" },
+          "query": "from(bucket: \"strom\")\n  |> range(start: -30d)\n  |> filter(fn: (r) => r._measurement == \"easymeter\" and r._field == \"energie_kwh\")\n  |> aggregateWindow(every: 1d, fn: max, createEmpty: false)\n  |> difference(nonNegative: true)\n  |> yield(name: \"30d\")"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Letzte 365 Tage (Tages-Granularität)",
+      "description": "Tagesverbrauch der letzten 365 Tage – zeigt saisonale Muster und Langzeittrend. Zeitfenster ist fix.",
+      "type": "barchart",
+      "gridPos": { "h": 11, "w": 12, "x": 12, "y": 11 },
+      "datasource": { "type": "influxdb", "uid": "${DS_INFLUXDB}" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "kwatth",
+          "decimals": 2,
+          "color": { "mode": "fixed", "fixedColor": "purple" },
+          "custom": { "fillOpacity": 70, "lineWidth": 1 }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "_value" },
+            "properties": [{ "id": "displayName", "value": "Tagesverbrauch (kWh)" }]
+          }
+        ]
+      },
+      "options": {
+        "xTickLabelRotation": -45,
+        "tooltip": { "mode": "single", "sort": "none" },
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": ["sum", "mean", "max"]
+        },
+        "barWidth": 0.6
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "influxdb", "uid": "${DS_INFLUXDB}" },
+          "query": "from(bucket: \"strom\")\n  |> range(start: -365d)\n  |> filter(fn: (r) => r._measurement == \"easymeter\" and r._field == \"energie_kwh\")\n  |> aggregateWindow(every: 1d, fn: max, createEmpty: false)\n  |> difference(nonNegative: true)\n  |> yield(name: \"365d\")"
+        }
+      ]
+    }
+  ],
+  "refresh": "10m",
+  "schemaVersion": 38,
+  "tags": ["strom", "easymeter", "energie"],
+  "time": { "from": "now-7d", "to": "now" },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "Stromverbrauch – Fixe Zeitfenster",
+  "uid": "strom-verbrauch-fix-v1",
+  "version": 1
+}
