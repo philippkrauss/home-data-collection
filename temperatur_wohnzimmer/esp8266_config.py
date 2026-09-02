@@ -8,7 +8,7 @@ WIFI_SSID     = "..."   # eigene Router-SSID eintragen
 WIFI_PASSWORD = ""
 
 # --- InfluxDB ---
-INFLUX_URL   = "http://waerme-pi:8086" 
+INFLUX_URL   = "https://dein-vps.example.com"  # extern, nicht auf dem waerme-pi
 INFLUX_TOKEN  = ""
 INFLUX_ORG    = "homelab"
 INFLUX_BUCKET = "innentemperatur"          

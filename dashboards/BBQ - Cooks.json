@@ -1,0 +1,469 @@
+{
+  "__inputs": [
+    {
+      "name": "DS_INFLUXDB",
+      "label": "InfluxDB",
+      "description": "",
+      "type": "datasource",
+      "pluginId": "influxdb",
+      "pluginName": "InfluxDB"
+    }
+  ],
+  "__elements": {},
+  "__requires": [
+    {
+      "type": "grafana",
+      "id": "grafana",
+      "name": "Grafana",
+      "version": "12.4.3"
+    },
+    {
+      "type": "datasource",
+      "id": "influxdb",
+      "name": "InfluxDB",
+      "version": "1.0.0"
+    },
+    {
+      "type": "panel",
+      "id": "table",
+      "name": "Table",
+      "version": ""
+    },
+    {
+      "type": "panel",
+      "id": "trend",
+      "name": "Trend",
+      "version": ""
+    },
+    {
+      "type": "panel",
+      "id": "annolist",
+      "name": "Annotations list",
+      "version": ""
+    }
+  ],
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "description": "Historie aller Grill-Sessions: Tabelle mit Sprung ins Live-Dashboard und Vergleich mehrerer Cooks ueber die Zeit seit Start.",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "links": [
+    {
+      "asDropdown": false,
+      "icon": "external link",
+      "includeVars": false,
+      "keepTime": false,
+      "tags": [],
+      "targetBlank": false,
+      "title": "BBQ – Aktueller Cook",
+      "tooltip": "Live-Ansicht",
+      "type": "link",
+      "url": "/d/bbq-live-v1/"
+    }
+  ],
+  "panels": [
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${DS_INFLUXDB}"
+      },
+      "description": "Eine Zeile je Cook. Klick auf die Cook-ID springt mit dem passenden Zeitraum ins Live-Dashboard.",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "filterable": true,
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": 0
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "start_ms"
+            },
+            "properties": [
+              {
+                "id": "custom.hidden",
+                "value": true
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "ende_ms"
+            },
+            "properties": [
+              {
+                "id": "custom.hidden",
+                "value": true
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "cook"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Cook"
+              },
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "targetBlank": false,
+                    "title": "Diesen Cook im Live-Dashboard oeffnen",
+                    "url": "/d/bbq-live-v1/?from=${__data.fields.start_ms}&to=${__data.fields.ende_ms}"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Time"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Start"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "dauer_s"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Dauer"
+              },
+              {
+                "id": "unit",
+                "value": "s"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "max_temp"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "max °C"
+              },
+              {
+                "id": "unit",
+                "value": "celsius"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "duty_avg"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Ø Lüfter"
+              },
+              {
+                "id": "unit",
+                "value": "percent"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true,
+        "sortBy": [
+          {
+            "desc": true,
+            "displayName": "Start"
+          }
+        ]
+      },
+      "pluginVersion": "12.4.3",
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${DS_INFLUXDB}"
+          },
+          "query": "from(bucket: \"bbq\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"bbq_channel\" and r._field == \"temp_c\")\n  |> group(columns: [\"cook\"])\n  |> sort(columns: [\"_time\"])\n  |> reduce(\n      identity: {t0: 0, t1: 0},\n      fn: (r, accumulator) => ({\n        t0: if accumulator.t0 == 0 then int(v: r._time) else accumulator.t0,\n        t1: int(v: r._time),\n      }),\n  )\n  |> map(fn: (r) => ({\n      cook: r.cook,\n      _time: time(v: r.t0),\n      start_ms: r.t0 / 1000000,\n      ende_ms: r.t1 / 1000000,\n      dauer_s: (r.t1 - r.t0) / 1000000000,\n    }))\n  |> group()\n  |> yield(name: \"zeiten\")",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${DS_INFLUXDB}"
+          },
+          "query": "from(bucket: \"bbq\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"bbq_channel\" and r._field == \"temp_c\")\n  |> group(columns: [\"cook\"])\n  |> max()\n  |> keep(columns: [\"cook\", \"_value\"])\n  |> rename(columns: {_value: \"max_temp\"})\n  |> group()\n  |> yield(name: \"max\")",
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${DS_INFLUXDB}"
+          },
+          "query": "from(bucket: \"bbq\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"bbq_pitmaster\" and r._field == \"value_pct\")\n  |> group(columns: [\"cook\"])\n  |> mean()\n  |> keep(columns: [\"cook\", \"_value\"])\n  |> rename(columns: {_value: \"duty_avg\"})\n  |> group()\n  |> yield(name: \"duty\")",
+          "refId": "C"
+        }
+      ],
+      "title": "Cooks",
+      "transformations": [
+        {
+          "id": "joinByField",
+          "options": {
+            "byField": "cook",
+            "mode": "outer"
+          }
+        }
+      ],
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${DS_INFLUXDB}"
+      },
+      "description": "Mehrere Cooks uebereinandergelegt, X-Achse ist die Zeit seit Sessionbeginn. Nur so sind Cooks vergleichbar - die Uhrzeit ist dafuer die falsche Achse.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "smooth",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "displayName": "${__field.labels.cook} · K${__field.labels.channel}",
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              }
+            ]
+          },
+          "unit": "celsius"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 12,
+        "w": 24,
+        "x": 0,
+        "y": 9
+      },
+      "id": 2,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "multi",
+          "sort": "none"
+        },
+        "xField": "stunden"
+      },
+      "pluginVersion": "12.4.3",
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${DS_INFLUXDB}"
+          },
+          "query": "from(bucket: \"bbq\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"bbq_channel\")\n  |> filter(fn: (r) => r._field == \"temp_c\" or r._field == \"elapsed_s\")\n  |> filter(fn: (r) => contains(value: r.cook, set: ${cook:json}))\n  |> pivot(rowKey: [\"_time\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n  |> map(fn: (r) => ({\n      stunden: float(v: r.elapsed_s) / 3600.0,\n      temp: r.temp_c,\n      cook: r.cook,\n      channel: r.channel,\n    }))\n  |> group(columns: [\"cook\", \"channel\"])\n  |> sort(columns: [\"stunden\"])\n  |> yield(name: \"vergleich\")",
+          "refId": "A"
+        }
+      ],
+      "title": "Vergleich – Stunden seit Start",
+      "type": "trend"
+    },
+    {
+      "datasource": {
+        "type": "grafana",
+        "uid": "-- Grafana --"
+      },
+      "description": "Cooks, die per Region-Annotation im Live-Dashboard benannt wurden (Strg+Ziehen ueber den Zeitbereich, Tag 'bbq').",
+      "gridPos": {
+        "h": 7,
+        "w": 24,
+        "x": 0,
+        "y": 21
+      },
+      "id": 3,
+      "options": {
+        "limit": 30,
+        "navigateAfter": "10m",
+        "navigateBefore": "10m",
+        "navigateToPanel": false,
+        "onlyFromThisDashboard": false,
+        "onlyInTimeRange": false,
+        "showTags": true,
+        "showTime": true,
+        "showUser": false,
+        "tags": [
+          "bbq"
+        ],
+        "tagsFilter": "bbq"
+      },
+      "pluginVersion": "12.4.3",
+      "title": "Benannte Cooks (Annotationen)",
+      "type": "annolist"
+    }
+  ],
+  "preload": false,
+  "refresh": "",
+  "schemaVersion": 42,
+  "tags": [
+    "bbq",
+    "grill",
+    "wlanthermo"
+  ],
+  "templating": {
+    "list": [
+      {
+        "allowCustomValue": false,
+        "current": {
+          "text": [
+            "$__all"
+          ],
+          "value": [
+            "$__all"
+          ]
+        },
+        "datasource": {
+          "type": "influxdb",
+          "uid": "${DS_INFLUXDB}"
+        },
+        "definition": "schema.tagValues(bucket: \"bbq\", tag: \"cook\")",
+        "description": "Welche Cooks im Vergleichs-Panel uebereinandergelegt werden",
+        "includeAll": true,
+        "label": "Cook",
+        "multi": true,
+        "name": "cook",
+        "options": [],
+        "query": "import \"influxdata/influxdb/schema\"\nschema.tagValues(bucket: \"bbq\", tag: \"cook\")",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 2,
+        "type": "query"
+      }
+    ]
+  },
+  "time": {
+    "from": "now-90d",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "BBQ – Cooks",
+  "uid": "bbq-cooks-v1",
+  "version": 1,
+  "weekStart": ""
+}

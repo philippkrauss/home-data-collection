@@ -1,0 +1,33 @@
+# ============================================================
+#  wlanthermo-collector.service - systemd-Unit fuer den WLANThermo-Collector
+#
+#  Dauerlaeufer statt Cron, weil das Pollintervall unter einer Minute liegt.
+#
+#  Einrichten:
+#    sudo cp wlanthermo-collector.service /etc/systemd/system/
+#    sudo systemctl daemon-reload
+#    sudo systemctl enable --now wlanthermo-collector
+#
+#  Status pruefen:
+#    sudo systemctl status wlanthermo-collector
+#    journalctl -u wlanthermo-collector -f
+# ============================================================
+
+[Unit]
+Description=WLANThermo Collector -> InfluxDB
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=admin
+# WorkingDirectory sorgt dafuer, dass load_dotenv() die gemeinsame .env findet
+WorkingDirectory=/home/admin
+ExecStart=/usr/bin/python3 /home/admin/wlanthermo_influx.py
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
